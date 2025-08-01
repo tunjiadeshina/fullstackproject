@@ -3,11 +3,11 @@ output "s3_bucket_name" {
 }
 
 output "cloudfront_distribution_id" {
-    value = aws_cloudfront_distribution.app_dristribution.id
+    value = aws_cloudfront_distribution.app_distribution.id
 }
 
 output "cloudfront_domain_name" {
-    value = aws_cloudfront_distribution.app.distribution.domain_name
+    value = aws_cloudfront_distribution.app_distribution.domain_name
 }
 
 output "logs_bucket_name" {
