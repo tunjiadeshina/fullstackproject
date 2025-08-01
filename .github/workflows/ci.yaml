@@ -1,22 +1,33 @@
-name: CI Pipeline
+name: CICD Pipeline
 
 on: 
-  pull_request:
+  push:
     branches:
-      -main 
+      - devel
+      - stage
+      - prod
+
+
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+    environment: ${{ github.ref_name }}
 
-  steps: 
+    env:
+      TF_ENV: ${{ github.ref_name }}
+
+    steps: 
     - name: Check out code
-    uses: actions/checkout@v2
+      uses: actions/checkout@v2
 
     - name: Set up Node.js
-    uses: actions/setup-node@v2
-    with:
-      node-version: '14'
+      uses: actions/setup-node@v2
+      with:
+        node-version: '18'
 
     - name: Install dependencies
       run: npm install
@@ -33,7 +44,47 @@ jobs:
       run: npm run test
 
     - name: Build project
+      env:
+        NODE_OPTIONS: "--openssl-legacy-provider"
       run: npm run build
+
+    - name: setup Terraform 
+      run: |
+        rm -rf terraform.zip terraform_binary
+        curl -fsSL https://releases.hashicorp.com/terraform/1.3.9/terraform_1.3.9_linux_amd64.zip -o terraform.zip
+        unzip terraform.zip -d terraform_binary
+        sudo cp terraform_binary/terraform /usr/local/bin/terraform
+        sudo chmod +x /usr/local/bin/terraform
+        rm -rf terraform.zip terraform_binary
+        terraform version 
+    
+    - name: Terraform Init
+      run: terraform init
+      working-directory: ./terraform
+
+    - name: Terraform Plan
+      run: terraform plan -var-file=environments/${{ env.TF_ENV }}.tfvars
+      working-directory: ./terraform  
+
+    - name: Terraform Apply
+      run: terraform apply -auto-approve -var-file=environments/${{ env.TF_ENV }}.tfvars
+      working-directory: ./terraform  
+           
+    - name: Get Bucket name
+      id: bucket
+      run: echo "name=$(terraform output -raw s3_bucket_name)" >> $GITHUB_OUTPUT
+      working-directory: ./terraform
+
+    - name: Get Cloudfront id
+      id: cloudfront
+      run: echo "id=$(terraform output -raw cloudfront_distribution_id)" >> $GITHUB_OUTPUT
+      working-directory: ./terraform
+
+    - name: Upload to s3
+      run: aws s3 sync build/ s3://${{ steps.bucket.outputs.name }}  --delete
+
+    - name: Invalidate Cloudfront
+      run: aws cloudfront create-invalidation --distribution-id ${{ steps.cloudfront.outputs.id }} --paths "/*"  
 
 
 

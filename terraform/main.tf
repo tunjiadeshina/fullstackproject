@@ -15,29 +15,29 @@ provider "aws" {
   region = var.aws_region
 }
 
-resource "aws_s3_bucket" "name_bucket" {
-  bucket = "${var.project_name}-${var.environment}-name"
+resource "aws_s3_bucket" "app_bucket" {
+  bucket = "${var.project_name}-${var.environment}-app"
 }
 
 resource "aws_s3_bucket" "name_bucket" {
-  bucket = "${var.project_name}-${var.environment}-name"
+  bucket = "${var.project_name}-${var.environment}-logs"
 }
 
-resource "aws_s3_bucket_ownership_controls" "name_bucket" {
-  bucket = aws_s3_bucket.name_bucket.id
+resource "aws_s3_bucket_ownership_controls" "logs_bucket" {
+  bucket = aws_s3_bucket.logs_bucket.id
   rule {
     object_ownership = "BucketOwnerPreferred"
   }
 }
 
-resource "aws_s3_bucket_acl" "name_bucket" {
-  depends_on = [aws_s3_bucket_ownership_controls.name_bucket]
-  bucket     = aws_s3_bucket.name_bucket.id
+resource "aws_s3_bucket_acl" "logs_bucket" {
+  depends_on = [aws_s3_bucket_ownership_controls.logs_bucket]
+  bucket     = aws_s3_bucket.logs_bucket.id
   acl        = "private"
 }
 
-resource "aws_s3_bucket_website_configuration" "name_bucket" {
-  bucket = aws_s3_bucket.name_bucket.id
+resource "aws_s3_bucket_website_configuration" "app_bucket" {
+  bucket = aws_s3_bucket.app_bucket.id
   index_document {
     suffix = "index.html"
   }
@@ -46,16 +46,16 @@ resource "aws_s3_bucket_website_configuration" "name_bucket" {
   }
 }
 
-resource "aws_s3_bucket_public_access_block" "name_bucket" {
-  bucket = aws_s3_bucket.name_bucket.id
+resource "aws_s3_bucket_public_access_block" "app_bucket" {
+  bucket = aws_s3_bucket.app_bucket.id
   block_public_acls       = false
   block_public_policy     = false
   ignore_public_acls      = false
   restrict_public_buckets = false
 }
 
-resource "aws_s3_bucket_policy" "name_bucket" {
-  bucket = aws_s3_bucket.name_bucket.id
+resource "aws_s3_bucket_policy" "app_bucket" {
+  bucket = aws_s3_bucket.app_bucket.id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -64,14 +64,14 @@ resource "aws_s3_bucket_policy" "name_bucket" {
         Effect    = "Allow"
         Principal = "*"
         Action    = "s3:GetObject"
-        Resource  = "${aws_s3_bucket.name_bucket.arn}/*"
+        Resource  = "${aws_s3_bucket.app_bucket.arn}/*"
       }
     ]
   })
-  depends_on = [aws_s3_bucket_public_access_block.name_bucket]
+  depends_on = [aws_s3_bucket_public_access_block.app_bucket]
 }
 
-resource "aws_cloudfront_origin_access_control" "name_oac" {
+resource "aws_cloudfront_origin_access_control" "app_oac" {
   name                              = "${var.project_name}-${var.environment}-oac-v2"
   origin_access_control_origin_type = "s3"
   signing_behavior                  = "always"
@@ -82,11 +82,11 @@ resource "random_id" "oac_suffix" {
   byte_length = 4
 }
 
-resource "aws_cloudfront_distribution" "name_distribution" {
+resource "aws_cloudfront_distribution" "app_distribution" {
   origin {
-    domain_name              = aws_s3_bucket.name_bucket.bucket_regional_domain_name
-    origin_access_control_id = aws_cloudfront_origin_access_control.name_oac.id
-    origin_id                = "S3-${aws_s3_bucket.name_bucket.id}"
+    domain_name              = aws_s3_bucket.app_bucket.bucket_regional_domain_name
+    origin_access_control_id = aws_cloudfront_origin_access_control.app_oac.id
+    origin_id                = "S3-${aws_s3_bucket.app_bucket.id}"
   }
 
   enabled             = true
@@ -96,7 +96,7 @@ resource "aws_cloudfront_distribution" "name_distribution" {
   default_cache_behavior {
     allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods   = ["GET", "HEAD"]
-    target_origin_id = "S3-${aws_s3_bucket.name_bucket.id}"
+    target_origin_id = "S3-${aws_s3_bucket.app_bucket.id}"
 
     forwarded_values {
       query_string = false
