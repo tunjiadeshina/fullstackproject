@@ -33,8 +33,10 @@ jobs:
       run: npm run test
 
     - name: Build project
+      env:
+        NODE_OPTIONS: "--openssl-legacy-provider"
       run: npm run build
-      
+
 
 
 
