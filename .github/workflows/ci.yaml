@@ -1,13 +1,22 @@
-name: CI Pipeline
+name: CICD Pipeline
 
 on: 
-  pull_request:
+  push:
     branches:
-      - main 
+      - devel
+      - stage
+      - prod
+permissions:
+id-token: write
+contents: read
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+    environment: ${{ github.ref_name }}
+
+    env:
+      TF_ENV: ${{ github.ref_name }}
 
     steps: 
     - name: Check out code
