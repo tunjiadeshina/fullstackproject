@@ -19,7 +19,7 @@ resource "aws_s3_bucket" "app_bucket" {
   bucket = "${var.project_name}-${var.environment}-app"
 }
 
-resource "aws_s3_bucket" "name_bucket" {
+resource "aws_s3_bucket" "logs_bucket" {
   bucket = "${var.project_name}-${var.environment}-logs"
 }
 
