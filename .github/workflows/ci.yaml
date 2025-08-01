@@ -6,6 +6,8 @@ on:
       - devel
       - stage
       - prod
+
+
 permissions:
   id-token: write
   contents: read
